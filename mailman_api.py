@@ -18,6 +18,7 @@ def matches_regex(pattern, _string):
     
 
 app = Flask(__name__)
+# app.config['DEBUG'] = True
 
 
 @app.route('/lists/', methods=['GET'])
@@ -45,7 +46,7 @@ def list_lists_with_members():
         destinations = mlist.getMembers()
 
         # Matching at least one destination
-        if dest_regex and not matches_regex(dest_regex, destinations.join("\n")):
+        if dest_regex and not matches_regex(dest_regex, "\n".join(destinations)):
             continue
         
         lists_w_members.append({

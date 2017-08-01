@@ -1,6 +1,9 @@
 import logging
+import sys
 
 from flask import jsonify, make_response
+
+sys.path.append('/usr/lib/mailman/')
 
 try:
     from Mailman import MailList, Errors

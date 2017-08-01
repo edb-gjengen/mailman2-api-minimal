@@ -28,12 +28,12 @@ def list_lists_with_members():
     dest_regex = request.args.get('destination_regex')
 
     lists_w_members = []
-    for listname in Utils.list_names():
-        if listname == 'mailman':
+    for list_name in Utils.list_names():
+        if list_name == 'mailman':
             continue
 
-        mlist = MailList.MailList(listname, lock=False)
-        source = mlist.GetListEmail()
+        m_list = MailList.MailList(list_name, lock=False)
+        source = m_list.GetListEmail()
         
         # Correct domain
         if domain_name and not source.split()[-1].endswith(domain_name):
@@ -43,7 +43,7 @@ def list_lists_with_members():
         if source_regex and not matches_regex(source_regex, source):
             continue
     
-        destinations = mlist.getMembers()
+        destinations = m_list.getMembers()
 
         # Matching at least one destination
         if dest_regex and not matches_regex(dest_regex, "\n".join(destinations)):
@@ -53,7 +53,7 @@ def list_lists_with_members():
             'destinations': destinations,
             'name': source,
             'type': 'mailman',
-            'admin_url': 'https://lists.neuf.no/admin/{}/'.format(listname),
+            'admin_url': 'https://lists.neuf.no/admin/{}/'.format(list_name),
             'admin_type': 'selfservice',
             'num': len(destinations)
         })
@@ -66,7 +66,19 @@ def list_lists_with_members():
 
 @app.route('/', methods=['GET'])
 def list_lists():
-    return jsonify({'lists': Utils.list_names()})
+    all_lists = Utils.list_names()
+    email = request.args.get('email')
+    if not email:
+        return jsonify({'lists': all_lists})
+
+    lists = []
+    for list_name in all_lists:
+        m_list = MailList.MailList(list_name, lock=False)
+        members = m_list.getMembers()
+        if email in members:
+            lists.append(list_name)
+
+    return jsonify({'lists': lists})
 
 if __name__ == '__main__':
     app.run()

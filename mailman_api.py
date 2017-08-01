@@ -1,14 +1,16 @@
 # coding: utf-8
 from __future__ import unicode_literals
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 import logging
 import sys
 import re
 
+from utils import get_mailing_list, parse_boolean, Member
+
 sys.path.append('/usr/lib/mailman/')
 
 try:
-    from Mailman import Errors, MailList, mm_cfg, Post, Utils
+    from Mailman import Errors, mm_cfg, Post, Utils
 except ImportError:
     logging.error('Could not import Mailman module')
 
@@ -32,8 +34,8 @@ def list_lists_with_members():
         if list_name == 'mailman':
             continue
 
-        m_list = MailList.MailList(list_name, lock=False)
-        source = m_list.GetListEmail()
+        mlist = get_mailing_list(list_name, lock=False)
+        source = mlist.GetListEmail()
         
         # Correct domain
         if domain_name and not source.split()[-1].endswith(domain_name):
@@ -43,7 +45,7 @@ def list_lists_with_members():
         if source_regex and not matches_regex(source_regex, source):
             continue
     
-        destinations = m_list.getMembers()
+        destinations = mlist.getMembers()
 
         # Matching at least one destination
         if dest_regex and not matches_regex(dest_regex, "\n".join(destinations)):
@@ -66,19 +68,78 @@ def list_lists_with_members():
 
 @app.route('/', methods=['GET'])
 def list_lists():
+    """ List all lists
+
+        ?address: an email address if provided will only return lists with the member on it
+    """
     all_lists = Utils.list_names()
-    email = request.args.get('email')
-    if not email:
+    address = request.args.get('address')
+    if not address:
         return jsonify({'lists': all_lists})
 
     lists = []
     for list_name in all_lists:
-        m_list = MailList.MailList(list_name, lock=False)
+        m_list = get_mailing_list(list_name, lock=False)
         members = m_list.getMembers()
-        if email in members:
+        if address in members:
             lists.append(list_name)
 
     return jsonify({'lists': lists})
+
+
+@app.route('/<list_name>', method='PUT')
+def subscribe(list_name):
+    """ Adds a new subscriber to the list called 'list_name'
+
+        ?address: email address that is to be subscribed to the list.
+        ?fullname: full name of the person being subscribed to the list.
+        ?digest: if this equals 'true', the new subscriber will receive digests instead of every mail sent to the list.
+    """
+
+    address = request.args.get('address')
+    fullname = request.args.get('fullname')
+    digest = parse_boolean(request.args.get('digest'))
+    # TODO: Validate params
+
+    mlist = get_mailing_list(list_name)
+    userdesc = Member(fullname, address, digest)
+
+    try:
+        mlist.ApprovedAddMember(userdesc, ack=True, admin_notif=True)
+    except Errors.MMAlreadyAMember:
+        return make_response(jsonify("Address already a member."), 409)
+    except Errors.MembershipIsBanned:
+        return make_response(jsonify("Banned address."), 403)
+    except (Errors.MMBadEmailError, Errors.MMHostileAddress):
+        return make_response(jsonify("Invalid address."), 400)
+
+    else:
+        mlist.Save()
+    finally:
+        mlist.Unlock()
+
+    return jsonify(True)
+
+
+@app.route('/<list_name>', method='DELETE')
+def unsubscribe(list_name):
+    """ Unsubsribe an email address from the mailing list.
+
+        ?address: email address that is to be unsubscribed from the list
+    """
+
+    address = request.args.get('address')
+    mlist = get_mailing_list(list_name)
+
+    try:
+        mlist.ApprovedDeleteMember(address, admin_notif=False, userack=True)
+        mlist.Save()
+    except Errors.NotAMemberError:
+        return make_response(jsonify("Not a member."), 404)
+    finally:
+        mlist.Unlock()
+
+    return make_response('', 204)
 
 if __name__ == '__main__':
     app.run()

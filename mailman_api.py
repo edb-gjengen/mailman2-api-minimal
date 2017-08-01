@@ -87,7 +87,7 @@ def list_lists():
     return jsonify({'lists': lists})
 
 
-@app.route('/<list_name>', method='PUT')
+@app.route('/<list_name>', methods=['PUT'])
 def subscribe(list_name):
     """ Adds a new subscriber to the list called 'list_name'
 
@@ -121,7 +121,7 @@ def subscribe(list_name):
     return jsonify(True)
 
 
-@app.route('/<list_name>', method='DELETE')
+@app.route('/<list_name>', methods=['DELETE'])
 def unsubscribe(list_name):
     """ Unsubsribe an email address from the mailing list.
 

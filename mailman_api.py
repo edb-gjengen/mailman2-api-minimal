@@ -105,7 +105,7 @@ def subscribe(list_name):
     userdesc = Member(fullname, address, digest)
 
     try:
-        mlist.ApprovedAddMember(userdesc, ack=True, admin_notif=True)
+        mlist.ApprovedAddMember(userdesc)
     except Errors.MMAlreadyAMember:
         return make_response(jsonify("Address already a member."), 409)
     except Errors.MembershipIsBanned:
@@ -132,7 +132,7 @@ def unsubscribe(list_name):
     mlist = get_mailing_list(list_name)
 
     try:
-        mlist.ApprovedDeleteMember(address, admin_notif=False, userack=True)
+        mlist.ApprovedDeleteMember(address)
         mlist.Save()
     except Errors.NotAMemberError:
         return make_response(jsonify("Not a member."), 404)

@@ -26,8 +26,8 @@ app = Flask(__name__)
 @app.route('/lists/', methods=['GET'])
 def list_lists_with_members():
     domain_name = request.args.get('domain__name')
-    source_regex = request.args.get('source_regex')
-    dest_regex = request.args.get('destination_regex')
+    source_regex = request.args.get('source__iregex')
+    dest_regex = request.args.get('destination__iregex')
 
     lists_w_members = []
     for list_name in Utils.list_names():

@@ -132,7 +132,7 @@ def unsubscribe(list_name):
     mlist = get_mailing_list(list_name)
 
     try:
-        mlist.ApprovedDeleteMember(address)
+        mlist.ApprovedDeleteMember(address, userack=False, admin_notif=False)
         mlist.Save()
     except Errors.NotAMemberError:
         return make_response(jsonify("Not a member."), 404)
